@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="gb2312" ?>
+<AutoUpdater>
+	<Description>人人好做商品交易中心 autoUpdate</Description>
+	<Updater>
+		<Url>http://ui.hssh5.com/AutoUpdate/</Url>
+		<LastUpdateTime>2017-05-12</LastUpdateTime>
+	</Updater>
+	<Application applicationId = "人人好做商品交易中心">
+		<EntryPoint>人人好做商品交易中心.exe</EntryPoint>
+		<Location>.</Location>
+		<Version>3.0.0.0</Version>
+	</Application>
+	<Files>
+		<File Ver="3.0.0.0" Name= "人人好做商品交易中心.exe" />
+	</Files>
+</AutoUpdater>
