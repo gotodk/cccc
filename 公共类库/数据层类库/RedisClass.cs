@@ -29,8 +29,8 @@ namespace FMDBHelperClass
 
 
 
-
             /*
+           
             if (DicPooledRedisPRCM.ContainsKey(PZ))
             {
                 if (DicPooledRedisPRCM[PZ] == null)
@@ -70,46 +70,78 @@ namespace FMDBHelperClass
 
             return (RedisClient)(((PooledRedisClientManager)DicPooledRedisPRCM[PZ]).GetClient());
              
+            
             */
 
+
+
+
+
+
+            string connString = ConfigurationManager.ConnectionStrings[PZ].ToString();
+            string[] pz_arr = connString.Split('|');
+
+            if (pz_arr.Length == 1)
+            {
+                string host = pz_arr[0];
+                return new RedisClient(host);
+
+            }
+            if (pz_arr.Length == 2)
+            {
+                string host = pz_arr[0];
+                string port = pz_arr[1];
+                return new RedisClient(host, Convert.ToInt32(port));
+
+            }
+
+
+            if (pz_arr.Length == 3)
+            {
+                string host = pz_arr[0];
+                string port = pz_arr[1];
+                string password = pz_arr[2];
+                return new RedisClient(host, Convert.ToInt32(port), password);
+
+            }
+            if (pz_arr.Length == 4)
+            {
+                string host = pz_arr[0];
+                string port = pz_arr[1];
+                string password = pz_arr[2];
+                string db = pz_arr[3];
+                return new RedisClient(host, Convert.ToInt32(port), password, Convert.ToInt32(db));
+
+            }
+
+            return null;
 
 
 
 
 
             /*
-                       string connString = ConfigurationManager.ConnectionStrings[PZ].ToString();
-                       return new RedisClient(connString.Replace("|", ":"));
-            */
+             //下面是原来的代码，有问题,没有连接池很容易冲突。所以执行命令时，需要加锁
 
-             
+             if (htRC.ContainsKey(PZ))
+             {
+                 if (htRC[PZ] == null)
+                 {
+                     string connString = ConfigurationManager.ConnectionStrings[PZ].ToString();
+                     htRC[PZ] = new RedisClient(connString.Split('|')[0], Convert.ToInt32(connString.Split('|')[1]));
+                 }
+             }
+             else
+             {
+                 string connString = ConfigurationManager.ConnectionStrings[PZ].ToString();
+                 htRC[PZ] = new RedisClient(connString.Split('|')[0], Convert.ToInt32(connString.Split('|')[1]));
 
-
-
-
-            
-           
-            //下面是原来的代码，有问题,没有连接池很容易冲突。所以执行命令时，需要加锁
-
-            if (htRC.ContainsKey(PZ))
-            {
-                if (htRC[PZ] == null)
-                {
-                    string connString = ConfigurationManager.ConnectionStrings[PZ].ToString();
-                    htRC[PZ] = new RedisClient(connString.Split('|')[0], Convert.ToInt32(connString.Split('|')[1]));
-                }
-            }
-            else
-            {
-                string connString = ConfigurationManager.ConnectionStrings[PZ].ToString();
-                htRC[PZ] = new RedisClient(connString.Split('|')[0], Convert.ToInt32(connString.Split('|')[1]));
-
-            }
+             }
 
 
-            return (RedisClient)htRC[PZ];
-          
+             return (RedisClient)htRC[PZ];
 
+         */
 
 
         }
@@ -142,12 +174,12 @@ namespace FMDBHelperClass
                 return null;
             }
 
-            
-        
+
+
         }
 
 
- 
+
 
 
     }
