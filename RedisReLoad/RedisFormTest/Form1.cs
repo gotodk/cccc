@@ -74,13 +74,10 @@ namespace RedisFormTest
         private void gogo()
         {
             RedisClient newRC = RedisClass.GetRedisClient(null);
- 
-            lock (RedisClass.LockObj)
-            {
-                byte[] Buffer = newRC.Get("cc");
-            }
-       
-          
+
+            byte[] Buffer = newRC.Get("cc");
+
+
 
         }
    

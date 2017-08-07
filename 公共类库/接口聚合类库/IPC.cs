@@ -480,15 +480,12 @@ namespace FMipcClass
                         keyValuePairs.Add(new KeyValuePair<string, string>("CStype", CStype));
                         keyValuePairs.Add(new KeyValuePair<string, string>("FFretype", FFretype));
 
-                        lock (RedisClass.LockObj)
-                        {
-                            RC.SetRangeInHash("H:queIPC:FF:" + queGUID, keyValuePairs);
-                            //开始写入有序集合，记录参数
-                            RC.ZAdd("Z:queIPC:CS:" + queGUID, keyValuePairsobjCS);
+                        RC.SetRangeInHash("H:queIPC:FF:" + queGUID, keyValuePairs);
+                        //开始写入有序集合，记录参数
+                        RC.ZAdd("Z:queIPC:CS:" + queGUID, keyValuePairsobjCS);
 
-                            //开始写入列表末尾,记录队列GUID
-                            RC.PushItemToList("L:queIPC:RUN", queGUID);
-                        }
+                        //开始写入列表末尾,记录队列GUID
+                        RC.PushItemToList("L:queIPC:RUN", queGUID);
 
                         return new object[] { "ok", "异步调用成功" };
                     }

@@ -133,10 +133,7 @@ namespace FMDBHelperClass
                 RedisClient RC = GetRedisClient(null);
                 //读取
                 byte[] re = null;
-                lock (RedisClass.LockObj)
-                {
-                    re = RC.Get<byte[]>(RedisKey);
-                }
+                re = RC.Get<byte[]>(RedisKey);
                 DataSet ds = StringOP.ByteToDataset(re);
                 return ds;
             }

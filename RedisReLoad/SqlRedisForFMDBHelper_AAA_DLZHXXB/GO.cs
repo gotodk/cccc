@@ -26,11 +26,8 @@ namespace SqlRedisForFMDBHelper_AAA_DLZHXXB
 
 
             RedisClient RC = RedisClass.GetRedisClient(null);
-            lock (RedisClass.LockObj)
-            {
-                RC.Add("aaaaaaaaaaaa", "bbbbbbbbbbb");
-            }
- 
+            RC.Add("aaaaaaaaaaaa", "bbbbbbbbbbb");
+
             return "ok";
         }
     }
