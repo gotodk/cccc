@@ -47,7 +47,7 @@ public class NoReSetDEL_sys_demo01
                 {
                     param.Add("@SID_" + d, delids[d]);
 
-                    alsql.Add("delete demouser  where SID=@SID_" + d);
+                    alsql.Add("delete xxx  where SID=@SID_" + d);
                 }
 
 

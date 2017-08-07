@@ -426,44 +426,15 @@ public class bsmain : System.Web.Services.WebService
             return_ht = I_DBL.RunParam_SQL("select top 1 *,YJfujian as tupian from  ZZZ_HQ_YJ where YJID=@YJID", "数据记录", param);
         }
 
-        if (ht_forUI["mod"].ToString().ToLower() == "fwbg")
-        {
-            param.Add("@GID", ht_forUI["idforedit"].ToString());
-
-            return_ht = I_DBL.RunParam_SQL("select top 1 *,Gfujian as tupian from  ZZZ_FWBG where GID=@GID", "数据记录", param);
-        }
-
-
-        if (ht_forUI["mod"].ToString().ToLower() == "wfsb")
-        {
-            param.Add("@SID", ht_forUI["idforedit"].ToString());
-
-            return_ht = I_DBL.RunParam_SQL("select top 1 *,Sfujian as tupian from  View_ZZZ_WFSB_list where SID=@SID", "数据记录", param);
-        }
-        if (ht_forUI["mod"].ToString().ToLower() == "sblxbase")
-        {
-            param.Add("@SBID", ht_forUI["idforedit"].ToString());
-
-            return_ht = I_DBL.RunParam_SQL("select top 1 *,SBfujian as tupian from  ZZZ_SBLXBASE where SBID=@SBID", "数据记录", param);
-        }
-        if (ht_forUI["mod"].ToString().ToLower() == "wflj")
-        {
-            param.Add("@LID", ht_forUI["idforedit"].ToString());
-
-            return_ht = I_DBL.RunParam_SQL("select top 1 *,Lfujian as tupian from  ZZZ_WFLJ where LID=@LID", "数据记录", param);
-        }
+ 
+ 
         if (ht_forUI["mod"].ToString().ToLower() == "ceshi")
         {
             param.Add("@id", ht_forUI["idforedit"].ToString());
 
             return_ht = I_DBL.RunParam_SQL("select top 1 *,tupiantest as tupian from  FUP_FormsDemoDB where id=@id", "数据记录", param);
         }
-        if (ht_forUI["mod"].ToString().ToLower() == "jianyi")
-        {
-            param.Add("@JID", ht_forUI["idforedit"].ToString());
-
-            return_ht = I_DBL.RunParam_SQL("select top 1 *,Ffujian as tupian from  pJianyi where JID=@JID", "数据记录", param);
-        }
+    
         if ((bool)(return_ht["return_float"]))
         {
             DataTable redb = ((DataSet)return_ht["return_ds"]).Tables["数据记录"].Copy();

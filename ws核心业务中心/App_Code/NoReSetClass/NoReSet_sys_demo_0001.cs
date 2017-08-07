@@ -63,9 +63,41 @@ public class NoReSet_sys_demo_0001
         param.Add("@id", guid);
         param.Add("@fieldtest", ht_forUI["fieldtest"].ToString());
 
+        //取图片比较特殊需要判断
+        if (ht_forUI.Contains("allpath_file1"))
+        { param.Add("@tupiantest", ht_forUI["allpath_file1"].ToString()); }
+        else
+        {
+            param.Add("@tupiantest", "");
+        }
 
+        //取下拉框和单选框和多选框也比较特殊，需要判断
+        if (ht_forUI.Contains("xingbie"))
+        { param.Add("@xingbie", ht_forUI["xingbie"].ToString()); }
+        else
+        {
+            param.Add("@xingbie", "");
+        }
 
-        alsql.Add("INSERT INTO FUP_FormsDemoDB(id ,fieldtest) VALUES(@id ,@fieldtest )");
+        //取编辑器比较特殊
+        if (ht_forUI.Contains("bianjiqi_html"))
+        {
+            string jjneirong = StringOP.uncMe(ht_forUI["bianjiqi_html"].ToString().Trim(), "mima");
+            string jjneirong_onlytext = StringOP.uncMe(ht_forUI["bianjiqi_text"].ToString().Trim(), "mima");
+            param.Add("@bianjiqi", jjneirong);
+
+        }
+        else
+        {
+            param.Add("@bianjiqi", "");
+        }
+
+        //日期段会根据id自动增加1和2
+
+        //取当前登录账号的uaid
+        param.Add("@beizhu", ht_forUI["yhbsp_session_uer_UAid"].ToString());
+
+        alsql.Add("INSERT INTO FUP_FormsDemoDB(id ,fieldtest,tupiantest) VALUES(@id ,@fieldtest,@tupiantest )");
 
  
         //遍历子表， 插入 
@@ -101,7 +133,8 @@ public class NoReSet_sys_demo_0001
         if ((bool)(return_ht["return_float"]))
         {
             dsreturn.Tables["返回值单条"].Rows[0]["执行结果"] = "ok";
-            dsreturn.Tables["返回值单条"].Rows[0]["提示文本"] = "新增成功！";
+            //dsreturn.Tables["返回值单条"].Rows[0]["提示文本"] = "新增成功！";
+            dsreturn.Tables["返回值单条"].Rows[0]["提示文本"] = "新增成功！{"+ guid + "}";
         }
         else
         {
@@ -138,14 +171,47 @@ public class NoReSet_sys_demo_0001
             return dsreturn;
         }
         //开始真正的处理，这里只是演示，所以直接在这里写业务逻辑代码了
-
+        // id, fieldtest, mima, xialakuang, xingbie, quanxian, xialakuangduoxuan, zhengshushuliang, erweixiao, yigeriqi,   riqiqujian1, riqiqujian2, beizhu, bianjiqi, yhb_city_Promary_diquxian, yhb_city_City_diquxian, yhb_city_Qu_diquxian,       sheng, shi, qu, zhanghao, tupiantest, dizhi, xingming
         I_Dblink I_DBL = (new DBFactory()).DbLinkSqlMain("");
         Hashtable return_ht = new Hashtable();
         ArrayList alsql = new ArrayList();
         Hashtable param = new Hashtable();
         param.Add("@id", ht_forUI["idforedit"].ToString());
         param.Add("@fieldtest", ht_forUI["fieldtest"].ToString());
-        param.Add("@tupiantest", ht_forUI["tupiantest"].ToString());
+
+        //取图片比较特殊需要判断
+        if (ht_forUI.Contains("allpath_file1"))
+        { param.Add("@tupiantest", ht_forUI["allpath_file1"].ToString()); }
+        else
+        {
+            param.Add("@tupiantest", "");
+        }
+
+        //取下拉框和单选框和多选框也比较特殊，需要判断
+        if (ht_forUI.Contains("xingbie"))
+        { param.Add("@xingbie", ht_forUI["xingbie"].ToString()); }
+        else
+        {
+            param.Add("@xingbie", "");
+        }
+
+        //取编辑器比较特殊
+        if (ht_forUI.Contains("bianjiqi_html"))
+        {
+            string jjneirong = StringOP.uncMe(ht_forUI["bianjiqi_html"].ToString().Trim(), "mima");
+            string jjneirong_onlytext = StringOP.uncMe(ht_forUI["bianjiqi_text"].ToString().Trim(), "mima");
+            param.Add("@bianjiqi", jjneirong);
+
+        }
+        else
+        {
+            param.Add("@bianjiqi", "");
+        }
+
+        //日期段会根据id自动增加1和2
+
+        //取当前登录账号的uaid
+        param.Add("@beizhu", ht_forUI["yhbsp_session_uer_UAid"].ToString());
 
         alsql.Add("UPDATE FUP_FormsDemoDB SET fieldtest = @fieldtest,tupiantest=@tupiantest where id=@id ");
 
@@ -195,7 +261,8 @@ public class NoReSet_sys_demo_0001
         {
 
             dsreturn.Tables["返回值单条"].Rows[0]["执行结果"] = "ok";
-            dsreturn.Tables["返回值单条"].Rows[0]["提示文本"] = "修改成功！";
+            //dsreturn.Tables["返回值单条"].Rows[0]["提示文本"] = "修改成功！";
+            dsreturn.Tables["返回值单条"].Rows[0]["提示文本"] = "修改成功！{" + ht_forUI["idforedit"].ToString() + "}";
         }
         else
         {
@@ -254,6 +321,22 @@ public class NoReSet_sys_demo_0001
             }
 
             dsreturn.Tables.Add(redb);
+
+            //(只有带有上传控件才需要这段)如果图片不是空值，把图片也弄个表加进来
+            if (redb.Rows[0]["tupiantest"].ToString() != "")
+            {
+                //Ttupianpath
+                DataTable dttu = new DataTable("图片记录");
+                dttu.Columns.Add("Ttupianpath");
+                string[] arr_tu = redb.Rows[0]["tupiantest"].ToString().Split(',');
+                for (int t = 0; t < arr_tu.Length; t++)
+                {
+                    dttu.Rows.Add(arr_tu[t]);
+                }
+                dsreturn.Tables.Add(dttu.Copy());
+
+            }
+
 
 
             dsreturn.Tables["返回值单条"].Rows[0]["执行结果"] = "ok";

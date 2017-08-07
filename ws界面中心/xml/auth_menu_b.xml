@@ -633,7 +633,8 @@
     <m_tip />
     <m_tag />
     <m_ico />
-    <m_show>不隐藏</m_show>
+    <m_show>隐藏</m_show>
+    <m_url_formenu_g />
     <SortNameTree>││├扫描条码例子</SortNameTree>
     <SortMoveUp>3</SortMoveUp>
     <SortMoveDown>-1</SortMoveDown>
