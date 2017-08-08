@@ -66,13 +66,24 @@
             <!-- **********其他特殊控制******** -->
      <script type="text/javascript">
          jQuery(function ($) {
+
+    
+
+
              if (getUrlParam("onlychart") == "yes") {
 
-                    $("#mysearchtop").hide();
-             $("#kuaijiedaanniuquyu").hide();
-             $("#zheshiliebiaoquyu").hide();
-                }
+                 $("#mysearchtop").hide();
+                 $("#kuaijiedaanniuquyu").hide();
+                 $("#zheshiliebiaoquyu").hide();
+             }
            
+
+
+             //默认查看今日
+             //var myDate = new Date();
+             //$('.date-picker').datepicker({ autoclose: true, })
+             //$('#CreateTime1').datepicker('setDate', myDate);
+             //$('#CreateTime2').datepicker('setDate', myDate);
           
          });
      </script>
