@@ -65,6 +65,15 @@
      </script>
             <!-- **********其他特殊控制******** -->
      <script type="text/javascript">
+
+         //快捷搜索前处理函数
+         function MybtnSearch_gorun()
+         {
+             alert("测试");
+             return true; //返回是继续搜索，返回否停止搜索
+         }
+
+
          jQuery(function ($) {
 
     

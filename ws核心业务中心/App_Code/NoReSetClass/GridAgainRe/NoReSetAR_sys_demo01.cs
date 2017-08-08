@@ -31,8 +31,8 @@ public class NoReSetAR_sys_demo01
         //========================================================
 
         //DataSet dstemp = jsontodatatable.re_chart("柱状图数据", "Scity", null, null, "Stime", "Sint", oldDS.Tables["主要数据"],"yes");
-        //DataSet dstemp = jsontodatatable.re_chart("曲线图数据", "Scity", null, null, "Stime", "Sint", oldDS.Tables["主要数据"], "yes");
-        DataSet dstemp = jsontodatatable.re_chart("饼图数据", "Sname", "测试数据", null, "Sint", null, oldDS.Tables["主要数据"], "yes");
+        DataSet dstemp = jsontodatatable.re_chart("曲线图数据", "Scity", null, null, "Stime", "Sint", oldDS.Tables["主要数据"], "yes");
+       // DataSet dstemp = jsontodatatable.re_chart("饼图数据", "Sname", "测试数据", null, "Sint", null, oldDS.Tables["主要数据"], "yes");
         for (int i = 0; i < dstemp.Tables.Count; i++)
         {
             NewDS.Tables.Add(dstemp.Tables[i].Copy());

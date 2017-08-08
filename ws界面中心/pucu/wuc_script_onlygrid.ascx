@@ -187,6 +187,18 @@
             });
             //自定义搜索事件
             $(document).on('click', "#MybtnSearch", function () {
+
+
+                try {
+                    var cg = true;
+                    eval("cg = MybtnSearch_gorun()");
+                    if (!cg)
+                    {
+                        return;
+                    }
+                } catch (e) { }
+
+
                 var zdy = $('#mysearchtop').serialize();
                 var postData = $(grid_selector).jqGrid("getGridParam", "postData");
                 $.extend(postData, { mysearchtop: zdy });
