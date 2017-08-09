@@ -1,0 +1,31 @@
+﻿
+	jQuery(grid_selector).navButtonAdd(pager_selector,{
+   caption:"", 
+   title : "清除缓存",
+   buttonicon:"ace-icon fa  fa-reply-all blue bz-zheshiredisdel", 
+   onClickButton: function(){ 
+
+  var aj_ex = $.ajax({
+                    url: '/pucu/delredis.aspx?zheshiyige_FID=[*[FSID]*]',
+                    type: 'post',
+					data: postData,
+                    cache: false,
+                    dataType: 'html',
+                    success: function (data) {
+					bootbox.alert(data);
+                    },
+                    error: function () {
+                        bootbox.alert('调用失败！');
+                    }
+                });
+
+
+
+
+
+
+   }, 
+   position:"last"
+});
+
+

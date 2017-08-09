@@ -138,6 +138,24 @@ public partial class pucu_jqgirdjs_for_grid : System.Web.UI.Page
             }
 
 
+
+            //处理删除redis缓存
+            
+            string jsmod_redisdel_op = File.ReadAllText(Server.MapPath("/pucu/jqgirdjs_for_grid_mod_redis_op.txt").ToString());
+            string FS_rediscache = ds_DD.Tables["报表配置主表"].Rows[0]["FS_rediscache"].ToString();
+            jsmod_redisdel_op = jsmod_redisdel_op.Replace("[*[FSID]*]", ds_DD.Tables["报表配置主表"].Rows[0]["FSID"].ToString());
+            if (FS_rediscache.Split('|').Length >= 2)
+            {
+                rehtml = rehtml.Replace("[*[FS_redis_delkey]*]", jsmod_redisdel_op);
+            }
+            else
+            {
+                rehtml = rehtml.Replace("[*[FS_redis_delkey]*]", "");
+            }
+            
+
+
+
             //处理自定义按钮
             string zdy_tihuan_str = "";
             string jsmod_zdy_op = File.ReadAllText(Server.MapPath("/pucu/jqgirdjs_for_grid_mod_zdy_op.txt").ToString());

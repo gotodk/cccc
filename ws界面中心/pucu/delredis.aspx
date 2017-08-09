@@ -1,0 +1,1 @@
+﻿<%@ Page Language="C#" AutoEventWireup="true" CodeFile="delredis.aspx.cs" Inherits="pucu_delredis" %>

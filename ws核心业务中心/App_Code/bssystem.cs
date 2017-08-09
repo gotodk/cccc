@@ -10,6 +10,10 @@ using FMPublicClass;
 using System.Web.Script.Serialization;
 using System.Numerics;
 using System.Reflection;
+using ServiceStack.Redis;
+using ServiceStack.Redis.Support;
+using System.IO;
+using System.Xml;
 
 /// <summary>
 /// 核心业务的相关处理接口
@@ -161,7 +165,11 @@ public class bssystem : System.Web.Services.WebService
             //dsreturn.Tables.Add(parameter_forUI.Copy());
             dsreturn.Tables["返回值单条"].Rows[0]["执行结果"] = "err";
             dsreturn.Tables["返回值单条"].Rows[0]["提示文本"] = "系统故障，保存失败：" + return_ht["return_errmsg"].ToString();
-        }       
+        }
+
+
+
+
 
         return dsreturn;
     }
@@ -618,8 +626,6 @@ public class bssystem : System.Web.Services.WebService
     }
 
 
- 
-
     /// <summary>
     /// 后台管理登录验证
     /// </summary>
@@ -652,7 +658,7 @@ public class bssystem : System.Web.Services.WebService
         Hashtable return_ht = new Hashtable();
 
         //密码验证，其他相关用户状态验证要独立出去，不能混合在这个语句中
-        return_ht = I_DBL.RunParam_SQL("select  top 1 AU.UAid as UAid,AU.Uloginname as Uloginname ,AU.Uattrcode as Uattrcode ,AU.Unumber1 as Unumber1  ,AU.Unumber2 as Unumber2  ,AU.Unumber3 as Unumber3,AU.Unumber4 as Unumber4,AU.Unumber5 as Unumber5,AU.Uingroups as Uingroups,AU.SuperUser as SuperUser,'0' as UfinalUnumber1,'0' as UfinalUnumber2,'0' as UfinalUnumber3,'0' as UfinalUnumber4,'0' as UfinalUnumber5  from auth_users_auths as AU   where AU.Uloginname=@Uloginname and AU.Uloginpassword=@Uloginpassword", "用户信息", param);
+        return_ht = I_DBL.RunParam_SQL("select  top 1 UAid,Uloginname ,Uattrcode ,Unumber1  ,Unumber2  ,Unumber3,Unumber4,Unumber5,Uingroups,SuperUser,'0' as UfinalUnumber1,'0' as UfinalUnumber2,'0' as UfinalUnumber3,'0' as UfinalUnumber4,'0' as UfinalUnumber5 from auth_users_auths where Uloginname=@Uloginname and Uloginpassword=@Uloginpassword", "用户信息", param);
 
         if ((bool)(return_ht["return_float"]))
         {
@@ -670,19 +676,15 @@ public class bssystem : System.Web.Services.WebService
                 if (redb.Rows[0]["Uattrcode"].ToString() == "1")
                 {
                     dsreturn.Tables["返回值单条"].Rows[0]["执行结果"] = "err_olnypassworderr";
-                    dsreturn.Tables["返回值单条"].Rows[0]["提示文本"] = "账户已离职，禁止登录!";
+                    dsreturn.Tables["返回值单条"].Rows[0]["提示文本"] = "员工已离职，禁止登录!";
                     return dsreturn;
                 }
                 if (redb.Rows[0]["Uattrcode"].ToString() == "2")
                 {
                     dsreturn.Tables["返回值单条"].Rows[0]["执行结果"] = "err_olnypassworderr";
-                    dsreturn.Tables["返回值单条"].Rows[0]["提示文本"] = "账户已被冻结，禁止登录!";
+                    dsreturn.Tables["返回值单条"].Rows[0]["提示文本"] = "员工已被冻结，禁止登录!";
                     return dsreturn;
                 }
-
-
-          
-
             }
 
 
@@ -719,11 +721,9 @@ public class bssystem : System.Web.Services.WebService
 
 
                 dsreturn.Tables.Add(redb);
-                //记录登录ip，更新两个登录时间
+                //记录登录ip
                 ArrayList lasp = new ArrayList();
                 lasp.Add("INSERT INTO auth_login_ip (Lid,LUAid,Lip) VALUES ('" + CombGuid.GetNewCombGuid("IP") + "','" + redb.Rows[0]["UAid"].ToString() + "','" + ip + "')");
-                lasp.Add("delete auth_login_ip where datediff(dd,Ltime,getdate())>100 ");
-                
                 I_DBL.RunParam_SQL(lasp);
                 dsreturn.Tables["返回值单条"].Rows[0]["执行结果"] = "ok";
                 dsreturn.Tables["返回值单条"].Rows[0]["提示文本"] = "";
@@ -833,11 +833,11 @@ public class bssystem : System.Web.Services.WebService
                 {
                     //一般菜单
                     putin_ht["@m_url"] = dt_request.Rows[0]["ee_m_url"].ToString();
-                    if(dt_request.Columns.Contains("ee_m_url_formenu_g"))
+                    if (dt_request.Columns.Contains("ee_m_url_formenu_g"))
                     {
                         putin_ht["@m_url_formenu_g"] = dt_request.Rows[0]["ee_m_url_formenu_g"].ToString();
                     }
-                   
+
                     putin_ht["@m_tip"] = dt_request.Rows[0]["ee_m_tip"].ToString();
                     putin_ht["@m_tag"] = dt_request.Rows[0]["ee_m_tag"].ToString();
                     putin_ht["@m_ico"] = dt_request.Rows[0]["ee_m_ico"].ToString();
@@ -859,7 +859,7 @@ public class bssystem : System.Web.Services.WebService
                     {
                         alsql.Add("UPDATE " + dt_request.Rows[0]["dbtbname"].ToString() + " SET  SortName=@SortName ,m_url=@m_url,m_tip=@m_tip,m_tag=@m_tag,m_ico=@m_ico,m_show=@m_show   where SortID=@SortID");
                     }
-                    
+
                     I_DBL.RunParam_SQL(alsql, putin_ht);
                 }
                 break;
@@ -1132,7 +1132,7 @@ public class bssystem : System.Web.Services.WebService
         {
             yc_sql = " and ANBaseName <> '开发专用' ";
         }
-        return_ht = I_DBL.RunProc("select * from auth_enum_number where ANClass='Unumber1' and ANused=1 "+ yc_sql + "  order by ANBaseName  ; select * from auth_enum_number where ANClass='Unumber2' and ANused=1 order by ANBaseName  ; select * from auth_enum_number where ANClass='Unumber3' and ANused=1 order by ANBaseName  ; select * from auth_enum_number where ANClass='Unumber4' and ANused=1 order by ANBaseName  ; select * from auth_enum_number where ANClass='Unumber5' and ANused=1 order by ANBaseName  ;", "临时名");
+        return_ht = I_DBL.RunProc("select * from auth_enum_number where ANClass='Unumber1' and ANused=1 " + yc_sql + "  order by ANBaseName  ; select * from auth_enum_number where ANClass='Unumber2' and ANused=1 order by ANBaseName  ; select * from auth_enum_number where ANClass='Unumber3' and ANused=1 order by ANBaseName  ; select * from auth_enum_number where ANClass='Unumber4' and ANused=1 order by ANBaseName  ; select * from auth_enum_number where ANClass='Unumber5' and ANused=1 order by ANBaseName  ;", "临时名");
 
         if ((bool)(return_ht["return_float"]))
         {
@@ -1695,9 +1695,9 @@ public class bssystem : System.Web.Services.WebService
 
             ArrayList alsql = new ArrayList();
             alsql.Add(" update auth_znx set beread='已读',wxsend='不发' where Zid=@Zid ");
- 
+
             return_ht = I_DBL.RunParam_SQL(alsql, param);
-        
+
 
             if ((bool)(return_ht["return_float"]))
             {
@@ -1765,12 +1765,12 @@ public class bssystem : System.Web.Services.WebService
 
         Hashtable return_ht = new Hashtable();
 
-        if(UAid == "所有未发送")
+        if (UAid == "所有未发送")
         {
             //param.Add("@UAid", UAid);
             return_ht = I_DBL.RunParam_SQL("select auth_znx.touser, auth_znx.msgtitle, auth_users_auths.Uloginname  from auth_znx left join auth_users_auths on  auth_znx.touser=auth_users_auths.UAid where  beread = '未读' and wxsend='待发'  order by addtime asc ; update auth_znx set wxsend='已发' where wxsend='待发'  ", "待发数据", param);
         }
-    
+
 
         if ((bool)(return_ht["return_float"]))
         {
@@ -1812,7 +1812,7 @@ public class bssystem : System.Web.Services.WebService
     [WebMethod(MessageName = "获取指定表单界面配置用于生成", Description = "获取指定表单界面配置用于生成")]
     public DataSet GetOneFormsInfo(string formFID)
     {
- 
+
 
         //初始化返回值
         DataSet dsreturn = initReturnDataSet().Clone();
@@ -1828,7 +1828,7 @@ public class bssystem : System.Web.Services.WebService
 
         Hashtable return_ht = new Hashtable();
 
-        string sql1 = " select top 1 * from FUP_FormsMainInfo where FID = '"+ formFID + "' and F_ok=1 ;";
+        string sql1 = " select top 1 * from FUP_FormsMainInfo where FID = '" + formFID + "' and F_ok=1 ;";
         string sql2 = " select * from FUP_FormsSubInfo where FS_FID = '" + formFID + "' and FS_ok=1 order by FS_index asc,FSID desc ;";
 
         return_ht = I_DBL.RunParam_SQL(sql1 + sql2, "xx", param);
@@ -1844,15 +1844,15 @@ public class bssystem : System.Web.Services.WebService
             //进行处理，以便于下拉菜单、单选框、多选框支持从数据库读取数据
             for (int i = 0; i < redb.Tables["表单配置子表"].Rows.Count; i++)
             {
-                string FS_SPPZ_list_static =  redb.Tables["表单配置子表"].Rows[i]["FS_SPPZ_list_static"].ToString();
+                string FS_SPPZ_list_static = redb.Tables["表单配置子表"].Rows[i]["FS_SPPZ_list_static"].ToString();
                 if (FS_SPPZ_list_static.Trim().IndexOf("[sql]") == 0)
                 {
                     //多行值和显示不相同的情况
-                    DataTable dtdz = ((DataSet)(I_DBL.RunProc(FS_SPPZ_list_static.Trim().Remove(0,5), "待转表")["return_ds"])).Tables["待转表"];
+                    DataTable dtdz = ((DataSet)(I_DBL.RunProc(FS_SPPZ_list_static.Trim().Remove(0, 5), "待转表")["return_ds"])).Tables["待转表"];
                     string dzstr = "";
                     for (int z = 0; z < dtdz.Rows.Count; z++)
                     {
-                        dzstr = dzstr + ""+ dtdz.Rows[z][1].ToString() + "|" + dtdz.Rows[z][0].ToString() + ",";
+                        dzstr = dzstr + "" + dtdz.Rows[z][1].ToString() + "|" + dtdz.Rows[z][0].ToString() + ",";
                     }
                     dzstr = dzstr.TrimEnd(',');
                     redb.Tables["表单配置子表"].Rows[i]["FS_SPPZ_list_static"] = dzstr;
@@ -1870,7 +1870,7 @@ public class bssystem : System.Web.Services.WebService
 
             dsreturn.Tables.Add(redb.Tables["表单配置主表"].Copy());
             dsreturn.Tables.Add(redb.Tables["表单配置子表"].Copy());
- 
+
 
             dsreturn.Tables["返回值单条"].Rows[0]["执行结果"] = "ok";
             dsreturn.Tables["返回值单条"].Rows[0]["提示文本"] = "";
@@ -2047,19 +2047,10 @@ public class bssystem : System.Web.Services.WebService
             }
             else
             {
-                if (ht_forUI.Contains("idforedit"))
-                {
-                    default_where = " and " + ds_DD.Tables["字段配置主表"].Rows[0]["FS_D_where"].ToString().Replace("{idforedit}", "'" + ht_forUI["idforedit"].ToString() + "'") + " ";
-                }
-                else
-                {
-                    default_where = " and " + ds_DD.Tables["字段配置主表"].Rows[0]["FS_D_where"].ToString().Replace("{idforedit}", "''") + " ";
-                }
-
-               
+                default_where = " and " + ds_DD.Tables["字段配置主表"].Rows[0]["FS_D_where"].ToString().Replace("{idforedit}", "'" + ht_forUI["idforedit"].ToString() + "'") + " ";
             }
 
-           
+
 
             //处理发过来的表头搜索条件
             string extseearchstr = " ";
@@ -2069,19 +2060,41 @@ public class bssystem : System.Web.Services.WebService
                 jqsearch_sql js = new jqsearch_sql();
                 js.getmysearchtop(ref dic_mysearchtop, ht_forUI["mysearchtop"].ToString());
 
-                //生成条件
-                //if (dic_mysearchtop.ContainsKey("Sname"))
-                //{
-                //    extseearchstr = extseearchstr + " and Sname like '%" + dic_mysearchtop["Sname"] + "%'";
-                //}
-                //if (dic_mysearchtop.ContainsKey("time1"))
-                //{
-                //    extseearchstr = extseearchstr + " and CreateTime >= '" + dic_mysearchtop["time1"] + " 00:00:00.000'";
-                //}
-                //if (dic_mysearchtop.ContainsKey("time2"))
-                //{
-                //    extseearchstr = extseearchstr + " and CreateTime <= '" + dic_mysearchtop["time2"] + " 23:59:59.999'";
-                //}
+                if (ds_DD.Tables["字段配置主表"].Rows[0]["SRE_open"].ToString() == "1")
+                {
+                    for (int i = 1; i <= 3; i++)
+                    {
+                        if (ds_DD.Tables["字段配置主表"].Rows[0]["SRE_type_" + i].ToString() == "输入框")
+                        {
+                            if (dic_mysearchtop.ContainsKey(ds_DD.Tables["字段配置主表"].Rows[0]["SRE_idname_" + i].ToString()) && ds_DD.Tables["字段配置主表"].Rows[0]["SRE_idname_" + i].ToString().IndexOf("tsthcs_") < 0)
+                            {
+                                extseearchstr = extseearchstr + " and " + ds_DD.Tables["字段配置主表"].Rows[0]["SRE_idname_" + i].ToString() + " like '%" + dic_mysearchtop[ds_DD.Tables["字段配置主表"].Rows[0]["SRE_idname_" + i].ToString()] + "%'";
+                            }
+                        }
+                        if (ds_DD.Tables["字段配置主表"].Rows[0]["SRE_type_" + i].ToString() == "时间段")
+                        {
+                            if (dic_mysearchtop.ContainsKey(ds_DD.Tables["字段配置主表"].Rows[0]["SRE_idname_" + i].ToString() + "1") && ds_DD.Tables["字段配置主表"].Rows[0]["SRE_idname_" + i].ToString().IndexOf("tsthcs_") < 0)
+                            {
+                                extseearchstr = extseearchstr + " and " + ds_DD.Tables["字段配置主表"].Rows[0]["SRE_idname_" + i].ToString() + " >= '" + dic_mysearchtop[ds_DD.Tables["字段配置主表"].Rows[0]["SRE_idname_" + i].ToString() + "1"] + " 00:00:00.000'";
+                            }
+                            if (dic_mysearchtop.ContainsKey(ds_DD.Tables["字段配置主表"].Rows[0]["SRE_idname_" + i].ToString() + "2") && ds_DD.Tables["字段配置主表"].Rows[0]["SRE_idname_" + i].ToString().IndexOf("tsthcs_") < 0)
+                            {
+                                extseearchstr = extseearchstr + " and " + ds_DD.Tables["字段配置主表"].Rows[0]["SRE_idname_" + i].ToString() + " <= '" + dic_mysearchtop[ds_DD.Tables["字段配置主表"].Rows[0]["SRE_idname_" + i].ToString() + "2"] + " 23:59:59.999'";
+                            }
+                        }
+                        if (ds_DD.Tables["字段配置主表"].Rows[0]["SRE_type_" + i].ToString() == "下拉框")
+                        {
+                            if (dic_mysearchtop.ContainsKey(ds_DD.Tables["字段配置主表"].Rows[0]["SRE_idname_" + i].ToString()) && ds_DD.Tables["字段配置主表"].Rows[0]["SRE_idname_" + i].ToString().IndexOf("tsthcs_") < 0)
+                            {
+                                extseearchstr = extseearchstr + " and " + ds_DD.Tables["字段配置主表"].Rows[0]["SRE_idname_" + i].ToString() + " = '" + dic_mysearchtop[ds_DD.Tables["字段配置主表"].Rows[0]["SRE_idname_" + i].ToString()] + "'";
+                            }
+
+                        }
+                    }
+
+
+                }
+
             }
 
             if (ht_forUI.Contains("filters"))
@@ -2104,11 +2117,11 @@ public class bssystem : System.Web.Services.WebService
             string teshuwhere = "";
             if (ht_forUI.Contains("this_extfor_teshuwhere"))
             {
-                if(ht_forUI["this_extfor_teshuwhere"].ToString().Trim() != "")
+                if (ht_forUI["this_extfor_teshuwhere"].ToString().Trim() != "")
                 {
                     teshuwhere = " and " + ht_forUI["this_extfor_teshuwhere"].ToString();
                 }
-        
+
             }
 
             //给条件赋值
@@ -2124,8 +2137,8 @@ public class bssystem : System.Web.Services.WebService
                 paixu_arr[0] = "";
                 string search_paixu = string.Join(" ", paixu_arr);
                 //设定默认排序
-                ds_page.Tables[0].Rows[0]["search_paixu"] = " "+ search_paixu + " ";  //排序方式(必须设置)
-                ds_page.Tables[0].Rows[0]["search_paixuZD"] = " "+ search_paixuZD + " ";  //用于排序的字段(必须设置) 
+                ds_page.Tables[0].Rows[0]["search_paixu"] = " " + search_paixu + " ";  //排序方式(必须设置)
+                ds_page.Tables[0].Rows[0]["search_paixuZD"] = " " + search_paixuZD + " ";  //用于排序的字段(必须设置) 
             }
             else
             {
@@ -2194,8 +2207,8 @@ public class bssystem : System.Web.Services.WebService
         string guid = CombGuid.GetMewIdFormSequence("FUP_FormsDemoDB");
         param.Add("@id", guid);
         param.Add("@fieldtest", ht_forUI["fieldtest"].ToString());
- 
- 
+
+
         Hashtable return_ht = new Hashtable();
         ArrayList alsql = new ArrayList();
         alsql.Add("INSERT INTO FUP_FormsDemoDB(id ,fieldtest) VALUES(@id ,@fieldtest )");
@@ -2262,7 +2275,7 @@ public class bssystem : System.Web.Services.WebService
         I_Dblink I_DBL = (new DBFactory()).DbLinkSqlMain("");
 
         Hashtable param = new Hashtable();
- 
+
         param.Add("@id", ht_forUI["idforedit"].ToString());
         param.Add("@fieldtest", ht_forUI["fieldtest"].ToString());
 
@@ -2348,7 +2361,7 @@ public class bssystem : System.Web.Services.WebService
             }
 
             dsreturn.Tables.Add(redb);
- 
+
             dsreturn.Tables["返回值单条"].Rows[0]["执行结果"] = "ok";
             dsreturn.Tables["返回值单条"].Rows[0]["提示文本"] = "";
         }
@@ -2369,7 +2382,8 @@ public class bssystem : System.Web.Services.WebService
 
     #endregion
 
-    
+
+
     #region 界面生成相关接口(列表)
 
 
@@ -2409,7 +2423,7 @@ public class bssystem : System.Web.Services.WebService
             alsql.Add("delete FUP_FormsList_user_buju where uaid=@uaid and fsid=@fsid ");
             if (sp == "保存")
             { alsql.Add("INSERT INTO  FUP_FormsList_user_buju( uaid ,fsid,jsonstr) VALUES(@uaid ,@fsid,@jsonstr) "); }
-           
+
 
 
 
@@ -2528,9 +2542,9 @@ public class bssystem : System.Web.Services.WebService
 
 
 
-            if(redb.Tables["报表配置主表"].Rows.Count > 0)
+            if (redb.Tables["报表配置主表"].Rows.Count > 0)
             {
-                for(int i = 1;i < 4;i++)
+                for (int i = 1; i < 4; i++)
                 {
                     string SRE_showname = redb.Tables["报表配置主表"].Rows[0]["SRE_showname_" + i].ToString();
                     if (SRE_showname.IndexOf('*') > 0)
@@ -2558,10 +2572,10 @@ public class bssystem : System.Web.Services.WebService
                             redb.Tables["报表配置主表"].Rows[0]["SRE_showname_" + i] = SRE_showname_nnn + "*" + dzstr;
                         }
                     }
-               
+
 
                 }
-               
+
             }
 
 
@@ -2613,6 +2627,77 @@ public class bssystem : System.Web.Services.WebService
         {
             return null;
         }
+
+        //尝试读取redis缓存的数据,根据列表配置主键和条件累加字符串
+        string FS_rediscache = ds_DD.Tables["报表配置主表"].Rows[0]["FS_rediscache"].ToString();
+        string hashid = "ZlistCache_" + ht_forUI["this_extforinfoFSID"].ToString();
+        string c_tiaojian = "show___";
+        if (ht_forUI.Contains("_search"))
+        {
+            c_tiaojian = c_tiaojian + ht_forUI["_search"].ToString() + "___";
+        }
+        if (ht_forUI.Contains("R_PageSize"))
+        {
+            c_tiaojian = c_tiaojian + ht_forUI["R_PageSize"].ToString() + "___";
+        }
+        if (ht_forUI.Contains("R_PageNumber"))
+        {
+            c_tiaojian = c_tiaojian + ht_forUI["R_PageNumber"].ToString() + "___";
+        }
+        if (ht_forUI.Contains("R_OrderBy"))
+        {
+            c_tiaojian = c_tiaojian + ht_forUI["R_OrderBy"].ToString() + "___";
+        }
+        if (ht_forUI.Contains("R_Sort"))
+        {
+            c_tiaojian = c_tiaojian + ht_forUI["R_Sort"].ToString() + "___";
+        }
+        if (ht_forUI.Contains("mysearchtop"))
+        {
+            c_tiaojian = c_tiaojian + ht_forUI["mysearchtop"].ToString() + "___";
+        }
+        if (ht_forUI.Contains("this_extfor_teshuwhere"))
+        {
+            c_tiaojian = c_tiaojian + ht_forUI["this_extfor_teshuwhere"].ToString() + "___";
+        }
+        if (ht_forUI.Contains("filters"))
+        {
+            c_tiaojian = c_tiaojian + ht_forUI["filters"].ToString() + "___";
+        }
+        StringReader stream = null;
+        XmlTextReader reader = null;
+        DataSet ds_form_redis = new DataSet();
+        try
+        {
+            if (FS_rediscache.Split('|').Length >= 2)
+            {
+                RedisClient RC = RedisClass.GetRedisClient(null);
+                string dbxml = RC.GetValueFromHash(hashid, c_tiaojian);
+
+                DataSet xmlDS = new DataSet();
+                stream = new StringReader(dbxml);
+                reader = new XmlTextReader(stream);
+                ds_form_redis.ReadXml(reader);
+                reader.Close();
+                stream.Close();
+                stream.Dispose();
+                return ds_form_redis;
+            }
+        }
+        catch { }
+        finally
+        {
+            if (reader != null)
+            {
+                reader.Close();
+            }
+            if (stream != null)
+            {
+                stream.Close();
+                stream.Dispose();
+            }
+        }
+
         //开始真正的处理，这里只是演示，所以直接在这里写业务逻辑代码了
 
         try
@@ -2663,9 +2748,9 @@ public class bssystem : System.Web.Services.WebService
                 {
                     default_where = " and " + ds_DD.Tables["报表配置主表"].Rows[0]["FS_D_where"].ToString() + " ";
                 }
-           
+
             }
-            
+
 
 
             //处理发过来的表头搜索条件
@@ -2680,22 +2765,22 @@ public class bssystem : System.Web.Services.WebService
                 {
                     for (int i = 1; i <= 3; i++)
                     {
-                        if (ds_DD.Tables["报表配置主表"].Rows[0]["SRE_type_"+i].ToString() == "输入框")
+                        if (ds_DD.Tables["报表配置主表"].Rows[0]["SRE_type_" + i].ToString() == "输入框")
                         {
                             if (dic_mysearchtop.ContainsKey(ds_DD.Tables["报表配置主表"].Rows[0]["SRE_idname_" + i].ToString()) && ds_DD.Tables["报表配置主表"].Rows[0]["SRE_idname_" + i].ToString().IndexOf("tsthcs_") < 0)
                             {
-                                extseearchstr = extseearchstr + " and "+ ds_DD.Tables["报表配置主表"].Rows[0]["SRE_idname_" + i].ToString() + " like '%" + dic_mysearchtop[ds_DD.Tables["报表配置主表"].Rows[0]["SRE_idname_" + i].ToString()] + "%'";
+                                extseearchstr = extseearchstr + " and " + ds_DD.Tables["报表配置主表"].Rows[0]["SRE_idname_" + i].ToString() + " like '%" + dic_mysearchtop[ds_DD.Tables["报表配置主表"].Rows[0]["SRE_idname_" + i].ToString()] + "%'";
                             }
                         }
                         if (ds_DD.Tables["报表配置主表"].Rows[0]["SRE_type_" + i].ToString() == "时间段")
                         {
-                            if (dic_mysearchtop.ContainsKey(ds_DD.Tables["报表配置主表"].Rows[0]["SRE_idname_" + i].ToString()+"1") && ds_DD.Tables["报表配置主表"].Rows[0]["SRE_idname_" + i].ToString().IndexOf("tsthcs_") < 0)
+                            if (dic_mysearchtop.ContainsKey(ds_DD.Tables["报表配置主表"].Rows[0]["SRE_idname_" + i].ToString() + "1") && ds_DD.Tables["报表配置主表"].Rows[0]["SRE_idname_" + i].ToString().IndexOf("tsthcs_") < 0)
                             {
-                                extseearchstr = extseearchstr + " and "+ ds_DD.Tables["报表配置主表"].Rows[0]["SRE_idname_" + i].ToString() + " >= '" + dic_mysearchtop[ds_DD.Tables["报表配置主表"].Rows[0]["SRE_idname_" + i].ToString()+"1"] + " 00:00:00.000'";
+                                extseearchstr = extseearchstr + " and " + ds_DD.Tables["报表配置主表"].Rows[0]["SRE_idname_" + i].ToString() + " >= '" + dic_mysearchtop[ds_DD.Tables["报表配置主表"].Rows[0]["SRE_idname_" + i].ToString() + "1"] + " 00:00:00.000'";
                             }
                             if (dic_mysearchtop.ContainsKey(ds_DD.Tables["报表配置主表"].Rows[0]["SRE_idname_" + i].ToString() + "2") && ds_DD.Tables["报表配置主表"].Rows[0]["SRE_idname_" + i].ToString().IndexOf("tsthcs_") < 0)
                             {
-                                extseearchstr = extseearchstr + " and "+ ds_DD.Tables["报表配置主表"].Rows[0]["SRE_idname_" + i].ToString() + " <= '" + dic_mysearchtop[ds_DD.Tables["报表配置主表"].Rows[0]["SRE_idname_" + i].ToString()+"2"] + " 23:59:59.999'";
+                                extseearchstr = extseearchstr + " and " + ds_DD.Tables["报表配置主表"].Rows[0]["SRE_idname_" + i].ToString() + " <= '" + dic_mysearchtop[ds_DD.Tables["报表配置主表"].Rows[0]["SRE_idname_" + i].ToString() + "2"] + " 23:59:59.999'";
                             }
                         }
                         if (ds_DD.Tables["报表配置主表"].Rows[0]["SRE_type_" + i].ToString() == "下拉框")
@@ -2704,10 +2789,10 @@ public class bssystem : System.Web.Services.WebService
                             {
                                 extseearchstr = extseearchstr + " and " + ds_DD.Tables["报表配置主表"].Rows[0]["SRE_idname_" + i].ToString() + " = '" + dic_mysearchtop[ds_DD.Tables["报表配置主表"].Rows[0]["SRE_idname_" + i].ToString()] + "'";
                             }
-                             
+
                         }
                     }
-                
+
 
                 }
                 //生成条件
@@ -2737,6 +2822,8 @@ public class bssystem : System.Web.Services.WebService
                 {
                     extseearchstr = extseearchstr + " and " + spsp_sql;
                 }
+
+
             }
 
             //处理前台脚本强制定义的特殊条件
@@ -2779,27 +2866,88 @@ public class bssystem : System.Web.Services.WebService
             if (typeName_tsthcs != null)
             {
                 object instance = serviceAsm_tsthcs.CreateInstance("NoReSetAR_tsthcs_" + ht_forUI["this_extforinfoFSID"].ToString());
-                object rtnObj = typeName_tsthcs.GetMethod("NRS_AR").Invoke(instance, new object[] { ds_page,dic_mysearchtop, parameter_forUI });
+                object rtnObj = typeName_tsthcs.GetMethod("NRS_AR").Invoke(instance, new object[] { ds_page, dic_mysearchtop, parameter_forUI });
                 ds_page = ((DataSet)rtnObj).Copy();
             }
 
 
 
             //调用执行方法获取数据
-            DataSet dsjg =  pd.GetPagerDB(ds_page);
+            DataSet dsjg = pd.GetPagerDB(ds_page);
 
             //开始调用二次处理
-            try {
+            try
+            {
                 Assembly serviceAsm = Assembly.GetExecutingAssembly();
                 Type typeName = serviceAsm.GetType("NoReSetAR_" + ht_forUI["this_extforinfoFSID"].ToString());
                 if (typeName != null)
                 {
                     object instance = serviceAsm.CreateInstance("NoReSetAR_" + ht_forUI["this_extforinfoFSID"].ToString());
-                    object rtnObj = typeName.GetMethod("NRS_AR").Invoke(instance, new object[] { dsjg });
-                    return (DataSet)rtnObj;
+                    MethodInfo mi = typeName.GetMethod("NRS_AR_other");
+                    object rtnObj;
+                    if (mi != null)
+                    {
+                        //优先调用NRS_AR_other
+                        rtnObj = typeName.GetMethod("NRS_AR_other").Invoke(instance, new object[] { dsjg, dic_mysearchtop, parameter_forUI });
+                    }
+                    else
+                    {
+                        rtnObj = typeName.GetMethod("NRS_AR").Invoke(instance, new object[] { dsjg });
+                    }
+
+                    dsjg.Tables.Clear();
+                    dsjg = ((DataSet)rtnObj).Copy();
+
                 }
             }
-            catch  { return dsjg; }
+            catch { }
+
+            //缓存参数配置格式  过期秒数|其他配置  
+            //返回之前判断是否进行缓存，缓存标志 ZlistCache_列表配置主键  , 域为条件拼接， 值为DataSet的xml。 
+            //ht_forUI["this_extforinfoFSID"].ToString()
+            try
+            {
+
+                if (FS_rediscache.Split('|').Length >= 2)
+                {
+                    long ttl = Convert.ToInt64(FS_rediscache.Split('|')[0]);
+                    string timekd = FS_rediscache.Split('|')[1];
+                    RedisClient RC = RedisClass.GetRedisClient(null);
+
+
+                    List<KeyValuePair<string, string>> keyValuePairs = new List<KeyValuePair<string, string>>();
+
+                    string c_dsjg = dsjg.GetXml();
+                    KeyValuePair<string, string> kvp = new KeyValuePair<string, string>(c_tiaojian, c_dsjg);
+                    keyValuePairs.Add(kvp);
+
+                    RC.SetRangeInHash(hashid, keyValuePairs);
+
+                    if (timekd == "秒")
+                    {
+                        RC.ExpireEntryIn(hashid, new TimeSpan(ttl * TimeSpan.TicksPerSecond));
+                    }
+                    if (timekd == "分钟")
+                    {
+                        RC.ExpireEntryIn(hashid, new TimeSpan(ttl * TimeSpan.TicksPerMinute));
+                    }
+                    if (timekd == "小时")
+                    {
+                        RC.ExpireEntryIn(hashid, new TimeSpan(ttl * TimeSpan.TicksPerHour));
+                    }
+                    if (timekd == "天")
+                    {
+                        RC.ExpireEntryIn(hashid, new TimeSpan(ttl * TimeSpan.TicksPerDay));
+                    }
+
+                }
+
+
+
+            }
+            catch { }
+
+
             return dsjg;
 
 
@@ -2847,6 +2995,83 @@ public class bssystem : System.Web.Services.WebService
         }
 
 
+
+
+        //尝试读取redis缓存的数据,根据列表配置主键和条件累加字符串
+        string FS_rediscache = ds_DD.Tables["报表配置主表"].Rows[0]["FS_rediscache"].ToString();
+        string hashid = "ZlistCache_" + ht_forUI["this_extforinfoFSID"].ToString();
+        string c_tiaojian = "excel___";
+        if (ht_forUI.Contains("_search"))
+        {
+            c_tiaojian = c_tiaojian + ht_forUI["_search"].ToString() + "___";
+        }
+        if (ht_forUI.Contains("R_PageSize"))
+        {
+            c_tiaojian = c_tiaojian + ht_forUI["R_PageSize"].ToString() + "___";
+        }
+        if (ht_forUI.Contains("R_PageNumber"))
+        {
+            c_tiaojian = c_tiaojian + ht_forUI["R_PageNumber"].ToString() + "___";
+        }
+        if (ht_forUI.Contains("R_OrderBy"))
+        {
+            c_tiaojian = c_tiaojian + ht_forUI["R_OrderBy"].ToString() + "___";
+        }
+        if (ht_forUI.Contains("R_Sort"))
+        {
+            c_tiaojian = c_tiaojian + ht_forUI["R_Sort"].ToString() + "___";
+        }
+        if (ht_forUI.Contains("mysearchtop"))
+        {
+            c_tiaojian = c_tiaojian + ht_forUI["mysearchtop"].ToString() + "___";
+        }
+        if (ht_forUI.Contains("this_extfor_teshuwhere"))
+        {
+            c_tiaojian = c_tiaojian + ht_forUI["this_extfor_teshuwhere"].ToString() + "___";
+        }
+        if (ht_forUI.Contains("filters"))
+        {
+            c_tiaojian = c_tiaojian + ht_forUI["filters"].ToString() + "___";
+        }
+        StringReader stream = null;
+        XmlTextReader reader = null;
+        DataSet ds_form_redis = new DataSet();
+        try
+        {
+            if (FS_rediscache.Split('|').Length >= 2)
+            {
+                RedisClient RC = RedisClass.GetRedisClient(null);
+                string dbxml = RC.GetValueFromHash(hashid, c_tiaojian);
+
+                DataSet xmlDS = new DataSet();
+                stream = new StringReader(dbxml);
+                reader = new XmlTextReader(stream);
+                ds_form_redis.ReadXml(reader);
+                reader.Close();
+                stream.Close();
+                stream.Dispose();
+                return ds_form_redis;
+            }
+        }
+        catch { }
+        finally
+        {
+            if (reader != null)
+            {
+                reader.Close();
+            }
+            if (stream != null)
+            {
+                stream.Close();
+                stream.Dispose();
+            }
+        }
+
+
+
+
+
+
         //初始化返回值
         DataSet dsreturn = initReturnDataSet().Clone();
         dsreturn.Tables["返回值单条"].Rows.Add(new string[] { "err", "初始化" });
@@ -2873,11 +3098,11 @@ public class bssystem : System.Web.Services.WebService
         for (int i = 0; i < ds_DD.Tables["字段配置子表"].Rows.Count; i++)
         {
             DataRow dr = ds_DD.Tables["字段配置子表"].Rows[i];
-            if(dr["DID_hide"].ToString() == "false" && dr["DID_formatter"].ToString() != "自定义" && !dr["DID_showname"].ToString().EndsWith("."))
+            if (dr["DID_hide"].ToString() == "false" && dr["DID_formatter"].ToString() != "自定义" && !dr["DID_showname"].ToString().EndsWith("."))
             {
                 field_str = field_str + " " + dr["DID_name"].ToString() + " as " + dr["DID_showname"].ToString() + ",";
             }
-   
+
         }
         field_str = field_str.TrimEnd(',');
 
@@ -2935,7 +3160,7 @@ public class bssystem : System.Web.Services.WebService
 
 
             }
- 
+
         }
 
         if (ht_forUI.Contains("filters"))
@@ -2995,7 +3220,7 @@ public class bssystem : System.Web.Services.WebService
         }
         //生成最终语句
 
-        string sql_ex = "select "+ field_str + " from "+ tbname + " where 1=1 " + where_str + " order by " + order_str + "";
+        string sql_ex = "select " + field_str + " from " + tbname + " where 1=1 " + where_str + " order by " + order_str + "";
 
         return_ht = I_DBL.RunParam_SQL(sql_ex, "导出的数据", param);
 
@@ -3005,7 +3230,7 @@ public class bssystem : System.Web.Services.WebService
         {
             DataSet redb = (DataSet)return_ht["return_ds"];
             dsreturn.Tables.Add(redb.Tables["导出的数据"].Copy());
-  
+
 
             dsreturn.Tables["返回值单条"].Rows[0]["执行结果"] = "ok";
             dsreturn.Tables["返回值单条"].Rows[0]["提示文本"] = "";
@@ -3021,7 +3246,7 @@ public class bssystem : System.Web.Services.WebService
 
 
 
- 
+
 
 
         //开始调用二次处理
@@ -3032,11 +3257,73 @@ public class bssystem : System.Web.Services.WebService
             if (typeName != null)
             {
                 object instance = serviceAsm.CreateInstance("NoReSetAR_" + ht_forUI["this_extforinfoFSID"].ToString());
-                object rtnObj = typeName.GetMethod("NRS_AR").Invoke(instance, new object[] { dsreturn });
-                return (DataSet)rtnObj;
+                MethodInfo mi = typeName.GetMethod("NRS_AR_other");
+                object rtnObj;
+                if (mi != null)
+                {
+                    //优先调用NRS_AR_other
+                    rtnObj = typeName.GetMethod("NRS_AR_other").Invoke(instance, new object[] { dsreturn, dic_mysearchtop, parameter_forUI });
+                }
+                else
+                {
+                    rtnObj = typeName.GetMethod("NRS_AR").Invoke(instance, new object[] { dsreturn });
+                }
+
+                dsreturn.Tables.Clear();
+                dsreturn = ((DataSet)rtnObj).Copy();
+
             }
         }
-        catch { return dsreturn; }
+        catch { }
+
+
+
+        //缓存参数配置格式  过期秒数|其他配置  
+        //返回之前判断是否进行缓存，缓存标志 ZlistCache_列表配置主键  , 域为条件拼接， 值为DataSet的xml。 
+        //ht_forUI["this_extforinfoFSID"].ToString()
+        try
+        {
+
+            if (FS_rediscache.Split('|').Length >= 2)
+            {
+                long ttl = Convert.ToInt64(FS_rediscache.Split('|')[0]);
+                string timekd = FS_rediscache.Split('|')[1];
+                RedisClient RC = RedisClass.GetRedisClient(null);
+
+
+                List<KeyValuePair<string, string>> keyValuePairs = new List<KeyValuePair<string, string>>();
+
+                string c_dsjg = dsreturn.GetXml();
+                KeyValuePair<string, string> kvp = new KeyValuePair<string, string>(c_tiaojian, c_dsjg);
+                keyValuePairs.Add(kvp);
+
+                RC.SetRangeInHash(hashid, keyValuePairs);
+
+                if (timekd == "秒")
+                {
+                    RC.ExpireEntryIn(hashid, new TimeSpan(ttl * TimeSpan.TicksPerSecond));
+                }
+                if (timekd == "分钟")
+                {
+                    RC.ExpireEntryIn(hashid, new TimeSpan(ttl * TimeSpan.TicksPerMinute));
+                }
+                if (timekd == "小时")
+                {
+                    RC.ExpireEntryIn(hashid, new TimeSpan(ttl * TimeSpan.TicksPerHour));
+                }
+                if (timekd == "天")
+                {
+                    RC.ExpireEntryIn(hashid, new TimeSpan(ttl * TimeSpan.TicksPerDay));
+                }
+
+            }
+
+
+
+        }
+        catch { }
+
+
 
         return dsreturn;
     }
@@ -3093,9 +3380,9 @@ public class bssystem : System.Web.Services.WebService
             param.Add("@FS_FID_" + i, guid);
             param.Add("@FS_name_" + i, ziduanliebiao[i].Trim());
             param.Add("@FS_title_" + i, ziduanliebiao[i].Trim());
-            param.Add("@FS_index_" + i, (i+1).ToString());
+            param.Add("@FS_index_" + i, (i + 1).ToString());
 
-            alsql.Add("INSERT INTO FUP_FormsSubInfo(FSID,FS_FID, FS_name,FS_title,FS_index) VALUES(@FSID_"+ i + ", @FS_FID_" + i + ",@FS_name_" + i + ",@FS_title_" + i + ",@FS_index_" + i + ")");
+            alsql.Add("INSERT INTO FUP_FormsSubInfo(FSID,FS_FID, FS_name,FS_title,FS_index) VALUES(@FSID_" + i + ", @FS_FID_" + i + ",@FS_name_" + i + ",@FS_title_" + i + ",@FS_index_" + i + ")");
         }
 
 
@@ -3106,7 +3393,7 @@ public class bssystem : System.Web.Services.WebService
         {
 
             dsreturn.Tables["返回值单条"].Rows[0]["执行结果"] = "ok";
-            dsreturn.Tables["返回值单条"].Rows[0]["提示文本"] = "使用默认值快速生成完成["+ guid + "]，需要人工根据业务调整！";
+            dsreturn.Tables["返回值单条"].Rows[0]["提示文本"] = "使用默认值快速生成完成[" + guid + "]，需要人工根据业务调整！";
         }
         else
         {
@@ -3157,7 +3444,7 @@ public class bssystem : System.Web.Services.WebService
         //以可排序guid方式生成
         //string guid = CombGuid.GetNewCombGuid("D"); 
         //以两位年+两位月+两位日+6位序列顺序号方式生成
- 
+
         string[] tanchuangziduan = ht_forUI["tanchuangziduan"].ToString().Split(',');
         Hashtable return_ht = new Hashtable();
         ArrayList alsql = new ArrayList();
@@ -3176,7 +3463,7 @@ public class bssystem : System.Web.Services.WebService
                 param.Add("@DID_name_" + i, tanchuangziduan[i].Trim());
                 param.Add("@DID_px_" + i, (i + 1).ToString());
 
-            
+
                 alsql.Add("INSERT INTO FUP_FormsSubDialog(DID,DID_FSID, DID_showname,DID_name,DID_px) VALUES(@DID_" + i + ", @DID_FSID_" + i + ",@DID_showname_" + i + ",@DID_name_" + i + ",@DID_px_" + i + ")");
             }
         }
@@ -3187,7 +3474,7 @@ public class bssystem : System.Web.Services.WebService
             string kelongziid = ht_forUI["kelongzi"].ToString();
             alsql.Add("delete FUP_FormsSubDialog where DID_FSID='" + oldid + "'");
 
-            alsql.Add("update old set old.FS_type = ly.FS_type,old.FS_D_haveD=ly.FS_D_haveD,old.FS_D_yinruzhi=ly.FS_D_yinruzhi, old.FS_D_shrinkToFit=ly.FS_D_shrinkToFit, old.FS_D_setGroupHeaders=ly.FS_D_setGroupHeaders, old.FS_D_field=ly.FS_D_field, old.FS_D_datatable=ly.FS_D_datatable, old.FS_D_where=ly.FS_D_where, old.FS_D_order=ly.FS_D_order,   old.FD_D_key=ly.FD_D_key, old.FD_D_pagesize=ly.FD_D_pagesize  from FUP_FormsSubInfo as  ly,FUP_FormsSubInfo as old where old.fsid='" + oldid + "' and ly.FSID='"+ kelongziid + "'");
+            alsql.Add("update old set old.FS_type = ly.FS_type,old.FS_D_haveD=ly.FS_D_haveD,old.FS_D_yinruzhi=ly.FS_D_yinruzhi, old.FS_D_shrinkToFit=ly.FS_D_shrinkToFit, old.FS_D_setGroupHeaders=ly.FS_D_setGroupHeaders, old.FS_D_field=ly.FS_D_field, old.FS_D_datatable=ly.FS_D_datatable, old.FS_D_where=ly.FS_D_where, old.FS_D_order=ly.FS_D_order,   old.FD_D_key=ly.FD_D_key, old.FD_D_pagesize=ly.FD_D_pagesize  from FUP_FormsSubInfo as  ly,FUP_FormsSubInfo as old where old.fsid='" + oldid + "' and ly.FSID='" + kelongziid + "'");
             //取出子表并重新插入
             Hashtable HTsub = I_DBL.RunParam_SQL("select DID from FUP_FormsSubDialog where DID_FSID='" + kelongziid + "' ", "数据记录", param);
             DataTable DTsub = ((DataSet)HTsub["return_ds"]).Tables["数据记录"].Copy();
@@ -3266,7 +3553,7 @@ public class bssystem : System.Web.Services.WebService
         param.Add("@FS_D_where", ht_forUI["FS_D_where"].ToString());
         param.Add("@FS_D_order", ht_forUI["FS_D_order"].ToString());
         param.Add("@FD_D_key", ht_forUI["FD_D_key"].ToString());
- 
+
 
         string[] ziduanliebiao = ht_forUI["ziduanliebiao"].ToString().Split(',');
         Hashtable return_ht = new Hashtable();
@@ -3383,7 +3670,7 @@ public class bssystem : System.Web.Services.WebService
             }
 
             dsreturn.Tables.Add(redb);
- 
+
             dsreturn.Tables["返回值单条"].Rows[0]["执行结果"] = "ok";
             dsreturn.Tables["返回值单条"].Rows[0]["提示文本"] = "";
         }
@@ -3450,14 +3737,14 @@ public class bssystem : System.Web.Services.WebService
             string toulanziduan = "FSID, FS_ok, FS_type, FS_name, FS_getJK, FS_delJK, FS_del_show, FS_can_download,FS_add_show,FS_add_show_link,FS_zdy_op, FS_D_shrinkToFit, FS_D_setGroupHeaders, FS_D_field, FS_D_datatable, FS_D_where, FS_D_order, FD_D_key, FD_D_pagesize, SRE_open, SRE_showname_1, SRE_idname_1, SRE_type_1, SRE_showname_2,SRE_idname_2, SRE_type_2, SRE_showname_3, SRE_idname_3, SRE_type_3";
             string sqlupdate = "UPDATE FUP_FormsList SET  ";
             string[] tlzd_arr = toulanziduan.Split(',');
-            param.Add("@"+ tlzd_arr[0].Trim(), ht_forUI["idforedit"].ToString());
+            param.Add("@" + tlzd_arr[0].Trim(), ht_forUI["idforedit"].ToString());
             for (int i = 1; i < tlzd_arr.Length; i++)
             {
-                param.Add("@"+ tlzd_arr[i].Trim(), ht_forUI[tlzd_arr[i].Trim()].ToString());
-                sqlupdate = sqlupdate + ""+ tlzd_arr[i].Trim() + "=@"+ tlzd_arr[i].Trim() + " ,";
+                param.Add("@" + tlzd_arr[i].Trim(), ht_forUI[tlzd_arr[i].Trim()].ToString());
+                sqlupdate = sqlupdate + "" + tlzd_arr[i].Trim() + "=@" + tlzd_arr[i].Trim() + " ,";
             }
             sqlupdate = sqlupdate.TrimEnd(',');
-            sqlupdate = sqlupdate + "  where " + tlzd_arr[0].Trim() + "=@"+ tlzd_arr[0].Trim() + "  ";
+            sqlupdate = sqlupdate + "  where " + tlzd_arr[0].Trim() + "=@" + tlzd_arr[0].Trim() + "  ";
             alsql.Add(sqlupdate);
 
 
@@ -3466,7 +3753,7 @@ public class bssystem : System.Web.Services.WebService
             string zibiao_gts_id = "grid-table-subtable-sys_editadd_FUP_FormsList_sub_029";
             DataTable subdt = jsontodatatable.ToDataTable(ht_forUI[zibiao_gts_id].ToString());
             //必须验证js脚本获取的数量和c#反序列化获取的数量一致才能继续。防止出错
-            if (ht_forUI[zibiao_gts_id+"_fcjsq"].ToString() != subdt.Rows.Count.ToString())
+            if (ht_forUI[zibiao_gts_id + "_fcjsq"].ToString() != subdt.Rows.Count.ToString())
             {
                 dsreturn.Tables["返回值单条"].Rows[0]["执行结果"] = "err";
                 dsreturn.Tables["返回值单条"].Rows[0]["提示文本"] = "子表数据量与获取量不相符，系统出现问题。";
@@ -3478,7 +3765,7 @@ public class bssystem : System.Web.Services.WebService
             {
                 if (subdt.Rows[i]["隐藏编号"].ToString().Trim() == "")
                 {
-                    param.Add("@sub_" + "DID" + "_" + i,   CombGuid.GetMewIdFormSequence("FUP_FormsList_field"));
+                    param.Add("@sub_" + "DID" + "_" + i, CombGuid.GetMewIdFormSequence("FUP_FormsList_field"));
                 }
                 else
                 {
@@ -3497,7 +3784,7 @@ public class bssystem : System.Web.Services.WebService
                 param.Add("@sub_" + "DID_frozen" + "_" + i, subdt.Rows[i]["冻结列"].ToString());
                 param.Add("@sub_" + "DID_formatter" + "_" + i, subdt.Rows[i]["显示格式"].ToString());
                 param.Add("@sub_" + "DID_formatter_CS" + "_" + i, subdt.Rows[i]["显示格式参数"].ToString());
- 
+
 
 
                 string INSERTsql = "INSERT INTO FUP_FormsList_field ( DID, DID_FSID, DID_ok, DID_px, DID_hide, DID_showname, DID_name, DID_width, DID_sortable, DID_fixed,  DID_frozen, DID_formatter, DID_formatter_CS ) VALUES(@sub_" + "DID" + "_" + i + ", @sub_MainID, @sub_DID_ok_" + i + ", @sub_DID_px_" + i + ", @sub_DID_hide_" + i + ", @sub_DID_showname_" + i + ", @sub_DID_name_" + i + ", @sub_DID_width_" + i + ", @sub_DID_sortable_" + i + ", @sub_DID_fixed_" + i + ",  @sub_DID_frozen_" + i + ", @sub_DID_formatter_" + i + ", @sub_DID_formatter_CS_" + i + "  )";
@@ -3554,13 +3841,13 @@ public class bssystem : System.Web.Services.WebService
             {
                 if (subdt.Rows[i]["隐藏编号"].ToString().Trim() == "")
                 {
-                    param.Add("@sub_" + "FSID" + "_" + i,   CombGuid.GetMewIdFormSequence("FUP_FormsSubInfo"));
+                    param.Add("@sub_" + "FSID" + "_" + i, CombGuid.GetMewIdFormSequence("FUP_FormsSubInfo"));
                 }
                 else
                 {
                     param.Add("@sub_" + "FSID" + "_" + i, subdt.Rows[i]["隐藏编号"].ToString());
                 }
- 
+
                 param.Add("@sub_" + "FS_ok" + "_" + i, subdt.Rows[i]["是否启用"].ToString());
                 param.Add("@sub_" + "FS_type" + "_" + i, subdt.Rows[i]["控件类型"].ToString());
                 param.Add("@sub_" + "FS_name" + "_" + i, subdt.Rows[i]["控件名"].ToString());
@@ -3586,7 +3873,7 @@ public class bssystem : System.Web.Services.WebService
                 param.Add("@sub_" + "FS_D_order" + "_" + i, subdt.Rows[i]["弹窗取值排序"].ToString());
                 param.Add("@sub_" + "FD_D_key" + "_" + i, subdt.Rows[i]["弹窗取值主键"].ToString());
                 param.Add("@sub_" + "FD_D_pagesize" + "_" + i, subdt.Rows[i]["弹窗分页数量"].ToString());
-           
+
                 string INSERTsql = "INSERT INTO FUP_FormsSubInfo ( FSID, FS_FID, FS_ok, FS_type, FS_name, FS_title, FS_minlength, FS_maxlength, FS_defaultvalue, FS_tip_n,  FS_tip_w, FS_passnull, FS_nulltip, FS_index, FS_SPPZ_list_static, FS_SPPZ_mask, FS_SPPZ_readonly, FS_D_haveD,   FS_D_yinruzhi, FS_D_shrinkToFit, FS_D_setGroupHeaders, FS_D_field, FS_D_datatable, FS_D_where, FS_D_order,   FD_D_key, FD_D_pagesize) VALUES(@sub_" + "FSID" + "_" + i + ", @sub_MainID, @sub_FS_ok_" + i + ", @sub_FS_type_" + i + ", @sub_FS_name_" + i + ", @sub_FS_title_" + i + ", @sub_FS_minlength_" + i + ", @sub_FS_maxlength_" + i + ", @sub_FS_defaultvalue_" + i + ", @sub_FS_tip_n_" + i + ",  @sub_FS_tip_w_" + i + ", @sub_FS_passnull_" + i + ", @sub_FS_nulltip_" + i + ", @sub_FS_index_" + i + ", @sub_FS_SPPZ_list_static_" + i + ", @sub_FS_SPPZ_mask_" + i + ", @sub_FS_SPPZ_readonly_" + i + ", @sub_FS_D_haveD_" + i + ", @sub_FS_D_yinruzhi_" + i + ", @sub_FS_D_shrinkToFit_" + i + ", @sub_FS_D_setGroupHeaders_" + i + ", @sub_FS_D_field_" + i + ", @sub_FS_D_datatable_" + i + ", @sub_FS_D_where_" + i + ", @sub_FS_D_order_" + i + ", @sub_FD_D_key_" + i + ", @sub_FD_D_pagesize_" + i + ")";
                 alsql.Add(INSERTsql);
             }
@@ -3625,14 +3912,14 @@ public class bssystem : System.Web.Services.WebService
             {
                 if (subdt.Rows[i]["隐藏编号"].ToString().Trim() == "")
                 {
-                    param.Add("@sub_" + "DID" + "_" + i,   CombGuid.GetMewIdFormSequence("FUP_FormsSubDialog"));
+                    param.Add("@sub_" + "DID" + "_" + i, CombGuid.GetMewIdFormSequence("FUP_FormsSubDialog"));
                 }
                 else
                 {
                     param.Add("@sub_" + "DID" + "_" + i, subdt.Rows[i]["隐藏编号"].ToString());
                 }
 
-     
+
                 param.Add("@sub_" + "DID_ok" + "_" + i, subdt.Rows[i]["是否启用"].ToString());
                 param.Add("@sub_" + "DID_px" + "_" + i, subdt.Rows[i]["排序权重"].ToString());
                 param.Add("@sub_" + "DID_hide" + "_" + i, subdt.Rows[i]["是否隐藏"].ToString());
@@ -3648,7 +3935,7 @@ public class bssystem : System.Web.Services.WebService
                 param.Add("@sub_" + "DID_edit_required" + "_" + i, subdt.Rows[i]["编辑是否必填"].ToString());
                 param.Add("@sub_" + "DID_edit_ftype" + "_" + i, subdt.Rows[i]["编辑控件类型"].ToString());
                 param.Add("@sub_" + "DID_edit_spset" + "_" + i, subdt.Rows[i]["编辑特殊参数"].ToString());
-   
+
 
                 string INSERTsql = "INSERT INTO FUP_FormsSubDialog ( DID, DID_FSID, DID_ok, DID_px, DID_hide, DID_showname, DID_name, DID_width, DID_sortable, DID_fixed,  DID_frozen, DID_formatter, DID_formatter_CS, DID_edit_editable, DID_edit_required, DID_edit_ftype,   DID_edit_spset) VALUES(@sub_" + "DID" + "_" + i + ", @sub_MainID, @sub_DID_ok_" + i + ", @sub_DID_px_" + i + ", @sub_DID_hide_" + i + ", @sub_DID_showname_" + i + ", @sub_DID_name_" + i + ", @sub_DID_width_" + i + ", @sub_DID_sortable_" + i + ", @sub_DID_fixed_" + i + ",  @sub_DID_frozen_" + i + ", @sub_DID_formatter_" + i + ", @sub_DID_formatter_CS_" + i + ", @sub_DID_edit_editable_" + i + ", @sub_DID_edit_required_" + i + ", @sub_DID_edit_ftype_" + i + ", @sub_DID_edit_spset_" + i + " )";
                 alsql.Add(INSERTsql);
@@ -3673,7 +3960,7 @@ public class bssystem : System.Web.Services.WebService
             sqlupdate = sqlupdate + "  where " + tlzd_arr[0].Trim() + "=@" + tlzd_arr[0].Trim() + "  ";
             alsql.Add(sqlupdate);
         }
-      
+
 
 
 
@@ -3725,7 +4012,7 @@ public class bssystem : System.Web.Services.WebService
         object instance = serviceAsm.CreateInstance("NoReSet_" + ht_forUI["zheshiyige_FID"].ToString());
         object rtnObj = typeName.GetMethod("NRS_ADD").Invoke(instance, new object[] { parameter_forUI });
         //若发生错误，写入日志，省略
- 
+
         return (DataSet)rtnObj;
     }
 
@@ -3830,5 +4117,4 @@ public class bssystem : System.Web.Services.WebService
 
     #endregion
 
-    
 }
